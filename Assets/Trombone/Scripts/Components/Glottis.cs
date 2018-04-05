@@ -11,20 +11,20 @@ public class Glottis {
 
     private Trombone trombone;
 
-    double timeInWaveform;
-    double oldFrequency = 140;
-    double newFrequency = 140;
-    public double UIFrequency = 140;
-    double smoothFrequency = 140;
-    double oldTenseness = 0.6f;
-    double newTenseness = 0.6f;
-    public double UITenseness = 0.6f;
-    double totalTime;
-    public double vibratoAmount = 0.005f;
-    double vibratoFrequency = 6;
-    double intensity = 1;
-    public double loudness = 1;
-    //double baseNote = 87.3071f; //F
+    float timeInWaveform;
+    float oldFrequency = 140;
+    float newFrequency = 140;
+    public float UIFrequency = 140;
+    float smoothFrequency = 140;
+    float oldTenseness = 0.6f;
+    float newTenseness = 0.6f;
+    public float UITenseness = 0.6f;
+    float totalTime;
+    public float vibratoAmount = 0.005f;
+    float vibratoFrequency = 6;
+    float intensity = 1;
+    public float loudness = 1;
+    //float baseNote = 87.3071f; //F
 
     /// Allow pitch to wobble over time
     public bool addPitchVariance = true;
@@ -37,131 +37,131 @@ public class Glottis {
 
     private OpenSimplexNoise noise = new OpenSimplexNoise();
 
-    private double alpha;
-    private double E0;
-    private double epsilon;
-    private double shift;
-    private double Delta;
-    private double Te;
-    private double omega;
+    private float alpha;
+    private float E0;
+    private float epsilon;
+    private float shift;
+    private float Delta;
+    private float Te;
+    private float omega;
 
-    private double waveformLength;
+    private float waveformLength;
 
     public Glottis(Trombone trombone) {
         this.trombone = trombone;
         SetupWaveform(0);
     }
 
-    void SetupWaveform(double lambda) {
-        double frequency = oldFrequency * (1.0 - lambda) + newFrequency * lambda;
-        double tenseness = oldTenseness * (1.0 - lambda) + newTenseness * lambda;
-        waveformLength = 1.0 / frequency;
+    void SetupWaveform(float lambda) {
+        float frequency = oldFrequency * (1.0f - lambda) + newFrequency * lambda;
+        float tenseness = oldTenseness * (1.0f - lambda) + newTenseness * lambda;
+        waveformLength = 1.0f / (frequency * 1f);
 
-        double Rd = 3.0 * (1.0 - tenseness);
-        if (Rd < 0.5) Rd = 0.5;
-        if (Rd > 2.7) Rd = 2.7;
+        float Rd = 3.0f * (1.0f - tenseness);
+        if (Rd < 0.5f) Rd = 0.5f;
+        if (Rd > 2.7f) Rd = 2.7f;
         // normalized to time = 1, Ee = 1
-        double Ra = -0.01 + 0.048 * Rd;
-        double Rk = 0.224 + 0.118 * Rd;
-        double Rg = (Rk / 4.0) * (0.5 + 1.2 * Rk) / (0.11 * Rd - Ra * (0.5 + 1.2 * Rk));
+        float Ra = -0.01f + 0.048f * Rd;
+        float Rk = 0.224f + 0.118f * Rd;
+        float Rg = (Rk / 4.0f) * (0.5f + 1.2f * Rk) / (0.11f * Rd - Ra * (0.5f + 1.2f * Rk));
 
-        double Ta = Ra;
-        double Tp = 1.0 / (2.0 * Rg);
+        float Ta = Ra;
+        float Tp = 1.0f / (2.0f * Rg);
         Te = Tp + Tp * Rk;
 
-        epsilon = 1.0 / Ta;
-        shift = Math.Exp(-epsilon * (1.0 - Te));
-        Delta = 1.0 - shift; //divide by this to scale RHS
+        epsilon = 1.0f / Ta;
+        shift = Mathf.Exp(-epsilon * (1.0f - Te));
+        Delta = 1.0f - shift; //divide by this to scale RHS
 
-        double RHSIntegral = (1.0 / epsilon) * (shift - 1.0) + (1.0 - Te) * shift;
+        float RHSIntegral = (1.0f / epsilon) * (shift - 1.0f) + (1.0f - Te) * shift;
         RHSIntegral = RHSIntegral / Delta;
 
-        double totalLowerIntegral = -(Te - Tp) / 2.0 + RHSIntegral;
-        double totalUpperIntegral = -totalLowerIntegral;
+        float totalLowerIntegral = -(Te - Tp) / 2.0f + RHSIntegral;
+        float totalUpperIntegral = -totalLowerIntegral;
 
-        omega = Math.PI / Tp;
-        double s = Math.Sin(omega * Te);
-        double y = -Math.PI * s * totalUpperIntegral / (Tp * 2.0);
-        double z = Math.Log(y);
-        alpha = z / (Tp / 2.0 - Te);
-        E0 = -1.0 / (s * Math.Exp(alpha * Te));
+        omega = Mathf.PI / Tp;
+        float s = Mathf.Sin(omega * Te);
+        float y = -Mathf.PI * s * totalUpperIntegral / (Tp * 2.0f);
+        float z = Mathf.Log(y);
+        alpha = z / (Tp / 2.0f - Te);
+        E0 = -1.0f / (s * Mathf.Exp(alpha * Te));
 
     }
 
-    public double RunStep(double lambda, double noiseSource) {
-        double timeStep = 1.0 / trombone.sampleRate;
+    public float RunStep(float lambda, float noiseSource) {
+        float timeStep = 1.0f / ((float)trombone.sampleRate / trombone.downsamplingFactor);
         timeInWaveform += timeStep;
         totalTime += timeStep;
         if (timeInWaveform > waveformLength) {
             timeInWaveform -= waveformLength;
             SetupWaveform(lambda);
         }
-        double newOutput = NormalizedLFWaveform(timeInWaveform / waveformLength);
-        var aspiration = intensity * (1.0 - Math.Sqrt(UITenseness)) * GetNoiseModulator() * noiseSource;
-        aspiration *= 0.2 + 0.02 * GetNoise(totalTime * 1.99);
+        float newOutput = NormalizedLFWaveform(timeInWaveform / waveformLength);
+        var aspiration = intensity * (1.0f - Mathf.Sqrt(UITenseness)) * GetNoiseModulator() * noiseSource;
+        aspiration *= 0.2f + 0.02f * GetNoise(totalTime * 1.99f);
         newOutput += aspiration;
         return newOutput;
     }
 
-    public double GetNoiseModulator() {
-        double voiced = 0.1 + 0.2 * Math.Max(0.0, Math.Sin(Math.PI * 2.0 * timeInWaveform / waveformLength));
+    public float GetNoiseModulator() {
+        float voiced = 0.1f + 0.2f * Mathf.Max(0.0f, Mathf.Sin(Mathf.PI * 2.0f * timeInWaveform / waveformLength));
         //return 0.3;
-        return UITenseness * intensity * voiced + (1.0 - UITenseness * intensity) * 0.3;
+        return UITenseness * intensity * voiced + (1.0f - UITenseness * intensity) * 0.3f;
     }
 
     public void FinishBlock() {
-        double vibrato = 0.0;
+        float vibrato = 0.0f;
         if (addPitchVariance) {
             // Add small imperfections to the vocal output
-            vibrato += vibratoAmount * Math.Sin(2.0 * Math.PI * totalTime * vibratoFrequency);
-            vibrato += 0.02 * GetNoise(totalTime * 4.07);
-            vibrato += 0.04 * GetNoise(totalTime * 2.15);
+            vibrato += vibratoAmount * Mathf.Sin(2.0f * Mathf.PI * totalTime * vibratoFrequency);
+            vibrato += 0.02f * GetNoise(totalTime * 4.07f);
+            vibrato += 0.04f * GetNoise(totalTime * 2.15f);
         }
 
         if (autoWobble) {
-            vibrato += 0.2 * GetNoise(totalTime * 0.98);
-            vibrato += 0.4 * GetNoise(totalTime * 0.5);
+            vibrato += 0.2f * GetNoise(totalTime * 0.98f);
+            vibrato += 0.4f * GetNoise(totalTime * 0.5f);
         }
 
         if (UIFrequency > smoothFrequency)
-            smoothFrequency = Math.Min(smoothFrequency * 1.1, UIFrequency);
+            smoothFrequency = Mathf.Min(smoothFrequency * 1.1f, UIFrequency);
         if (UIFrequency < smoothFrequency)
-            smoothFrequency = Math.Max(smoothFrequency / 1.1, UIFrequency);
+            smoothFrequency = Mathf.Max(smoothFrequency / 1.1f, UIFrequency);
         oldFrequency = newFrequency;
-        newFrequency = smoothFrequency * (1.0 + vibrato);
+        newFrequency = smoothFrequency * (1.0f + vibrato);
         oldTenseness = newTenseness;
 
         if (addTensenessVariance)
-            newTenseness = UITenseness + 0.1 * GetNoise(totalTime * 0.46) + 0.05 * GetNoise(totalTime * 0.36);
+            newTenseness = UITenseness + 0.1f * GetNoise(totalTime * 0.46f) + 0.05f * GetNoise(totalTime * 0.36f);
         else
             newTenseness = UITenseness;
 
-        if (!isTouched) newTenseness += (3.0 - UITenseness) * (1.0 - intensity);
+        if (!isTouched) newTenseness += (3.0f - UITenseness) * (1.0f - intensity);
 
         if (isTouched)
-            intensity += 0.13;
-        intensity = Clamp(intensity, 0.0, 1.0);
+            intensity += 0.13f;
+        intensity = Clamp(intensity, 0.0f, 1.0f);
     }
 
-    double NormalizedLFWaveform(double t) {
-        double output;
+    float NormalizedLFWaveform(float t) {
+        float output;
         if (t > Te) {
-            output = (-Math.Exp(-epsilon * (t - Te)) + shift) / Delta;
+            output = (-Mathf.Exp(-epsilon * (t - Te)) + shift) / Delta;
         }
         else {
-            output = E0 * Math.Exp(alpha * t) * Math.Sin(omega * t);
+            output = E0 * Mathf.Exp(alpha * t) * Mathf.Sin(omega * t);
         }
 
         return output * intensity * loudness;
     }
 
-    private double GetNoise(double t) {
-        double x = t * 1.2;
-        double y = -t * 0.7;
-        return noise.Evaluate(x * 2, y * 2);
+    private float GetNoise(float t) {
+        float x = t * 1.2f;
+        float y = -t * 0.7f;
+        return (float)noise.Evaluate(x * 2, y * 2);
     }
 
-    public static double Clamp(double value, double min, double max) {
+    public static float Clamp(float value, float min, float max) {
         return (value < min) ? min : (value > max) ? max : value;
     }
 

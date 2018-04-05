@@ -18,7 +18,7 @@ public class Flapper : MonoBehaviour {
 	void Update () {
         if (moveJaw) {
             float percent = (Mathf.Sin(Time.time * this.jawFlapSpeed) + 1.0f) / 2.0f;
-            trombone.tractUI.SetLipsClosed(1.0 - percent);
+            trombone.jawPosition = 1.0f - percent;
         }
 	}
 }

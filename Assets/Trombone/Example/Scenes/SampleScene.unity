@@ -152,10 +152,20 @@ Prefab:
       propertyPath: m_RootOrder
       value: 2
       objectReference: {fileID: 0}
-    - target: {fileID: 82108812551708176, guid: f15ab83159c91401faaaab215dbad77d,
+    - target: {fileID: 114462265309522786, guid: f15ab83159c91401faaaab215dbad77d,
         type: 2}
-      propertyPath: OutputAudioMixerGroup
-      value: 
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 114235518320269620, guid: f15ab83159c91401faaaab215dbad77d,
+        type: 2}
+      propertyPath: downsampling
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 114235518320269620, guid: f15ab83159c91401faaaab215dbad77d,
+        type: 2}
+      propertyPath: downsamplingFactor
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: f15ab83159c91401faaaab215dbad77d, type: 2}
@@ -298,21 +308,3 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &594164402 stripped
-GameObject:
-  m_PrefabParentObject: {fileID: 1387079681285732, guid: f15ab83159c91401faaaab215dbad77d,
-    type: 2}
-  m_PrefabInternal: {fileID: 39987299}
---- !u!114 &594164403
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 594164402}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c514562f923954f6699258d06bd0e38d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  moveJaw: 1
-  jawFlapSpeed: 20

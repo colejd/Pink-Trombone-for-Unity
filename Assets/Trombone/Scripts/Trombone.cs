@@ -13,7 +13,7 @@ public class Trombone : MonoBehaviour {
     /// Enables threading for audio synthesis. Disabling may improve audio quality, 
     /// but will increase CPU usage on Unity's audio thread.
     /// </summary>
-    public static bool DO_THREADING = false;
+    public static bool DO_THREADING = true;
 
     public Glottis glottis;
     public Tract tract;
@@ -24,6 +24,13 @@ public class Trombone : MonoBehaviour {
 
     [HideInInspector]
     public int sampleRate;
+    [HideInInspector]
+    public int bufferSize;
+
+    [HideInInspector]
+    public int downsamplingFactor = 1;
+    [HideInInspector]
+    public int downsamplingLevel = 0;
 
     private readonly System.Random rand = new System.Random();
 
@@ -34,17 +41,22 @@ public class Trombone : MonoBehaviour {
     private float[] audioData;
     private int numAudioChannels;
 
+    [Range(0f, 1f)]
+    public float jawPosition = 1.0f;
+
 	// Use this for initialization
 	void Start () {
-
         // Hook up trombone components
-        sampleRate = AudioSettings.outputSampleRate;
+        sampleRate = AudioSettings.outputSampleRate;// / downsampling;
+        bufferSize = AudioSettings.GetConfiguration().dspBufferSize;
         glottis = new Glottis(this);
         tract = new Tract(this, glottis);
         tractUI = new TractUI(this, tract);
 
         aspirateFilter = BiQuadFilter.BandPassFilterConstantSkirtGain(sampleRate, 500, 0.5f);
         fricativeFilter = BiQuadFilter.BandPassFilterConstantSkirtGain(sampleRate, 1000, 0.5f);
+
+        SetDownsamplingLevel(downsamplingLevel);
 
         // Dispatch thread if requested
         if (DO_THREADING) {
@@ -73,6 +85,8 @@ public class Trombone : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+
+        tractUI.SetLipsClosed(1.0f - jawPosition);
 
 	}
 
@@ -114,34 +128,43 @@ public class Trombone : MonoBehaviour {
     /// </summary>
     void GenerateAudioData(float[] data, int channels) {
 
-        for (int i = 0; i < data.Length; i += channels) {
+        for (int i = 0; i < data.Length; i += channels * downsamplingFactor) {
 
             float whiteNoise = (float)rand.NextDouble();
             float aspirateVal = aspirateFilter.Transform(whiteNoise);
             float fricativeVal = fricativeFilter.Transform(whiteNoise);
 
-            double lambda1 = (double)i / data.Length;
-            double lambda2 = (i + 0.5) / data.Length;
+            float lambda1 = (float)i / ((float)data.Length);
+            float lambda2 = (i + 0.5f) / ((float)data.Length);
 
-            double glottalOutput = glottis.RunStep(lambda1, aspirateVal);
+            float glottalOutput = glottis.RunStep(lambda1, aspirateVal * 1);
 
-            double vocalOutput = 0;
+            //float output = glottalOutput;
+
+            float vocalOutput = 0;
             //Tract runs at twice the sample rate 
-            tract.RunStep(glottalOutput, fricativeVal, lambda1);
+            tract.RunStep(glottalOutput * 1, fricativeVal * 1, lambda1);
             vocalOutput += tract.lipOutput + tract.noseOutput;
-            tract.RunStep(glottalOutput, fricativeVal, lambda2);
+            tract.RunStep(glottalOutput * 1, fricativeVal * 1, lambda2);
             vocalOutput += tract.lipOutput + tract.noseOutput;
-            float output = (float)(vocalOutput * 0.125);
+            float output = vocalOutput * 0.125f;
 
             // Channels are interleaved
-            for (int channel = 0; channel < channels; channel++) {
+            for (int channel = 0; channel < channels * downsamplingFactor; channel++) {
                 data[i + channel] = output;
             }
+
         }
+
 
         glottis.FinishBlock();
         tract.FinishBlock();
+        //tractUI.FinishBlock();
 
+    }
+
+    public void SetDownsamplingLevel(int level) {
+        downsamplingFactor = (int)Mathf.Pow(2, level);
     }
 
 }

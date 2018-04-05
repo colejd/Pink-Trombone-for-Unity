@@ -38,4 +38,23 @@ namespace MathExtensions {
         }
     
     }
+
+    public static class MathfExtensions {
+
+        public static float Saturate(float val) {
+            return val.ClampBetween(0.0f, 1.0f);
+        }
+
+        public static float MoveTowards(float current, float target, float amount) {
+            if (current < target) return Mathf.Min(current + amount, target);
+            else return Mathf.Max(current - amount, target);
+        }
+
+        public static float MoveTowards(float current, float target, float amountUp, float amountDown) {
+            if (current < target) return Mathf.Min(current + amountUp, target);
+            else return Mathf.Max(current - amountDown, target);
+        }
+
+    }
+
 }
